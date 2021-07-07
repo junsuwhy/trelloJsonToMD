@@ -40,6 +40,12 @@ if (empty($needSolveLists)) {
   }
 }
 
+// 處理 check list
+global $allChecklists;
+$allChecklists = [];
+foreach ($json->checklists as $checklist) {
+  $allChecklists[$checklist->id] = $checklist;
+}
 
 // 先處理 Action 到 Cards 上面;
 $i = 0;
@@ -74,8 +80,6 @@ foreach ($json->actions as $action) {
 
 
 // TODO:
-
-// CheckList
 
 // Attachment
 
@@ -118,6 +122,18 @@ finish_date: '.$finishDateText;
 ---
 
 '. $card->desc;
+
+  // Card Description
+
+  // Card checklists
+  global $allChecklists;
+  foreach ($card->idChecklists as $checklistId) {
+    if ($checklist = $allChecklists[$checklistId]) {
+      $text .= generateCheckList($checklist);
+    }
+  }
+
+  // Card Comments
   foreach ($card->comments as $comment) {
     $date = date('Y-m-d H:i:s', strtotime($comment->date));
     $text .= "
@@ -137,5 +153,23 @@ finish_date: '.$finishDateText;
   fwrite($mdFile, $text);
   fclose($mdFile);
 
+}
+
+function generateCheckList($checklist) {
+  $text = '';
+  $text .= "
+
+## {$checklist->name}
+";
+  $options = $checklist->checkItems;
+  usort($options, function($a, $b) {
+    return ($b->pos < $a->pos);
+  });
+  foreach ($options as $opt) {
+    $result = ($opt->state == 'complete') ? 'x' : ' ';
+    $text .= "
+  - [{$result}] {$opt->name}";
+  }
+  return $text;
 }
 
