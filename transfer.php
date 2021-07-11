@@ -99,15 +99,20 @@ function generateMarkdownByCard($card) {
   if (!$mdFile) return;
   $text = '---
 tags: ';
+  $cardTags = [];
 if (!empty($card->idLabels)) {
     $cardTags = [];
     foreach ($card->idLabels as $labelKey) {
       $cardTags[] = $tags[$labelKey];
     }
-    $text .= '
+  }
+  $cardTags[] = 'date/'.date('Y/m/d', strtotime($card->create));
+  if ($card->due && $card->dueComplete) {
+    $cardTags[]  = 'date/'.date('Y/m/d', strtotime($card->due));
+  }
+  $text .= '
 - '.implode('
 - ', $cardTags);
-  }
   if (isset($card->create)) {
     $createdDateText =  date('Y-m-d H:i:s +0800', strtotime($card->create));
     $text .= '
@@ -145,8 +150,44 @@ finish_date: '.$finishDateText;
 ";
   // [x] Trello Link
 
+  
+  
+}
 
+// 附件：
+$cardAttachments = [];
+if (!empty($card->attachments)) {
+  foreach ($card->attachments as $attachment) {
+    if ($attachment->isUpload) {
+      $explode = explode('.', $attachment->fileName);
+      $fileSuffix = end($explode);
+      $filePrefix = date('Y-m-d_',strtotime($attachment->date));
+      $dlFilePath = 'image/'.$filePrefix.substr($attachment->id, -6, 6).'.'.$fileSuffix;
+      if (!file_exists($dlFilePath)) {
+        file_put_contents($dlFilePath, file_get_contents($attachment->url));
+      }
+      $newFilePath = '../'.$dlFilePath;
+
+      $text = str_replace($attachment->url, $newFilePath, $text);
+      
+      // print($text);
+      // exit;
+    }
+    else {
+      $cardAttachments[$attachment->name] = $attachment->url;
+    }
   }
+}
+// print_r($cardAttachments);
+if (!empty($cardAttachments)) {
+  $text .='
+## 附件連結
+';
+  foreach ($cardAttachments as $name => $url) {
+    $text .="
+- [{$name}]($url)";
+  }
+}
   $text .= "
 
 [Trello卡片原連結]({$card->shortUrl})";
@@ -172,4 +213,5 @@ function generateCheckList($checklist) {
   }
   return $text;
 }
+
 
